@@ -63,6 +63,7 @@ namespace MagpieExtensionRonivans
         public override void DoPostConfigureComplete(GameObject go)
         {
             if (BaseConfig != null) BaseConfig.DoPostConfigureComplete(go);
+            ReverseBridgeSupport.TryAddButton(go);
         }
     }
 }

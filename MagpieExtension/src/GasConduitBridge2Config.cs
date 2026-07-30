@@ -36,7 +36,11 @@ namespace MagpieExtension
             return def;
         }
 
-        public override void ConfigureBuildingTemplate(GameObject go, Tag prefab_tag) { GeneratedBuildings.MakeBuildingAlwaysOperational(go); go.AddOrGet<ConduitBridge>().type = ConduitType.Gas; }
+        // Delegate rather than reimplement: the vanilla method does the same two
+        // things plus IgnoreDefaultKComponent(RequiresFoundation), and delegating
+        // means Harmony patches on it reach this building too -- that is what gives
+        // Knoest's Reverse Bridges mod its chance to attach the Reverse button.
+        public override void ConfigureBuildingTemplate(GameObject go, Tag prefab_tag) { BaseConfig.ConfigureBuildingTemplate(go, prefab_tag); }
         public override void DoPostConfigurePreview(BuildingDef def, GameObject go) { BaseConfig.DoPostConfigurePreview(def, go); }
         public override void DoPostConfigureUnderConstruction(GameObject go) { BaseConfig.DoPostConfigureUnderConstruction(go); }
         public override void DoPostConfigureComplete(GameObject go) { BaseConfig.DoPostConfigureComplete(go); }

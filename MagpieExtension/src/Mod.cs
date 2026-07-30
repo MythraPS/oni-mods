@@ -20,6 +20,9 @@ namespace MagpieExtension
             // rules now apply unmodified). See git history for the old code.
 
             harmony.PatchAll(Assembly.GetExecutingAssembly());
+            // Applied later, from Db.Initialize -- Reverse Bridges may not have
+            // loaded yet at this point. See ReverseBridgeCompat.
+            ReverseBridgeCompat.HarmonyInstance = harmony;
         }
     }
 
@@ -102,6 +105,13 @@ namespace MagpieExtension
             ModUtil.AddBuildingToPlanScreen("Power", WireRefinedBridgeHighWattage3Config.ID, SUBCATEGORY_WIRES, WireRefinedBridgeHighWattage2Config.ID);
             ModUtil.AddBuildingToPlanScreen("Power", InsulatedWireBridgeHighWattage3Config.ID,        SUBCATEGORY_WIRES, "LongInsulatedWireBridgeHighWattage");
             ModUtil.AddBuildingToPlanScreen("Power", InsulatedWireRefinedBridgeHighWattage3Config.ID, SUBCATEGORY_WIRES, "LongInsulatedRefinedWireBridgeHighWattage");
+        }
+
+        // Every mod's buildings are registered by now, so this is where bridges
+        // from other mods can be found and given the Reverse button.
+        public static void Postfix()
+        {
+            ReverseBridgeCompat.AddButtonToAllBridges();
         }
 
         private static void RegisterStrings()
@@ -264,6 +274,10 @@ namespace MagpieExtension
     {
         public static void Postfix()
         {
+            // Every mod's assembly is loaded by now, so this is where we can see
+            // whether Reverse Bridges is present.
+            ReverseBridgeCompat.TryPatch();
+
             AddToTechOf("WireBridgeHighWattage",
                 WireBridgeHighWattage2Config.ID, WireBridgeHighWattage3Config.ID,
                 InsulatedWireBridgeHighWattage3Config.ID);

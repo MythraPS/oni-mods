@@ -81,7 +81,8 @@ namespace MagpieExtensionRonivans
             return def;
         }
 
-        private static Type FindType(string fullyQualifiedTypeName)
+        // Also used by ReverseBridgeSupport to resolve Reverse Bridges' button.
+        internal static Type FindType(string fullyQualifiedTypeName)
         {
             foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
             {

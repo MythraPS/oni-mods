@@ -35,6 +35,15 @@ namespace MagpieExtension
             return def;
         }
 
+        // Was not overridden at all, so the vanilla method never ran for this
+        // building and it missed IgnoreDefaultKComponent(RequiresFoundation).
+        // Delegating also lets Harmony patches on the vanilla method reach this
+        // building -- that is what gives Knoest's Reverse Bridges mod its chance
+        // to attach the Reverse button.
+        public override void ConfigureBuildingTemplate(GameObject go, Tag prefab_tag)
+        {
+            BaseConfig.ConfigureBuildingTemplate(go, prefab_tag);
+        }
         public override void DoPostConfigurePreview(BuildingDef def, GameObject go)
         {
             BaseConfig.DoPostConfigurePreview(def, go);

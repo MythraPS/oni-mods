@@ -42,6 +42,10 @@ namespace MagpieExtensionRonivans
         public override void ConfigureBuildingTemplate(GameObject go, Tag prefab_tag) { if (BaseConfig != null) BaseConfig.ConfigureBuildingTemplate(go, prefab_tag); }
         public override void DoPostConfigurePreview(BuildingDef def, GameObject go) { if (BaseConfig != null) BaseConfig.DoPostConfigurePreview(def, go); }
         public override void DoPostConfigureUnderConstruction(GameObject go) { if (BaseConfig != null) BaseConfig.DoPostConfigureUnderConstruction(go); }
-        public override void DoPostConfigureComplete(GameObject go) { if (BaseConfig != null) BaseConfig.DoPostConfigureComplete(go); }
+        public override void DoPostConfigureComplete(GameObject go)
+        {
+            if (BaseConfig != null) BaseConfig.DoPostConfigureComplete(go);
+            ReverseBridgeSupport.TryAddButton(go);
+        }
     }
 }

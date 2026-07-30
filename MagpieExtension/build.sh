@@ -20,6 +20,7 @@ mcs \
   -r:"$ONI_MANAGED/UnityEngine.dll" \
   -r:"$ONI_MANAGED/0Harmony.dll" \
   -r:"$ONI_MANAGED/netstandard.dll" \
+  -r:"$ONI_MANAGED/Newtonsoft.Json.dll" \
   -r:"$ONI_MANAGED/UnityEngine.InputLegacyModule.dll" \
   -r:"$ONI_MANAGED/UnityEngine.UI.dll" \
   "$SCRIPT_DIR/src/"*.cs

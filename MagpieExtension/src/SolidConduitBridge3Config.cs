@@ -35,6 +35,11 @@ namespace MagpieExtension
             return def;
         }
 
+        // See SolidConduitBridge2Config: delegating keeps Reverse Bridges working.
+        public override void ConfigureBuildingTemplate(GameObject go, Tag prefab_tag)
+        {
+            BaseConfig.ConfigureBuildingTemplate(go, prefab_tag);
+        }
         public override void DoPostConfigurePreview(BuildingDef def, GameObject go)
         {
             BaseConfig.DoPostConfigurePreview(def, go);

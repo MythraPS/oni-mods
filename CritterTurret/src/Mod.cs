@@ -88,13 +88,13 @@ namespace CritterTurret
             Strings.Add(p + "DESC",
                 "A red robo-miner reconfigured to fire on critters instead of mining. It mounts on a floor, wall, or ceiling and shoots within a directional arc (line of sight required).");
             Strings.Add(p + "EFFECT",
-                "Automatically attacks critters within its room, culling surplus population down to a threshold you set. Target species are picked from a checklist; babies are listed separately from adults.");
+                "Automatically attacks critters within its room, culling surplus population down to a threshold you set. Each species is counted separately, so an overpopulated one is thinned out without touching the rest. Target species are picked from a checklist; babies are listed separately from adults.");
 
             // The threshold side screen's Title/ValueName are LocStrings, whose 1-arg
             // constructor stores the string as a lookup KEY (not text) -- so unless the
             // key is registered it renders as "MISSING.". Register key == text.
             Strings.Add("STRINGS.UI.UISIDESCREENS.CRITTERTURRET.OPEN_FIRE", "Open Fire At Population");
-            Strings.Add("STRINGS.UI.UISIDESCREENS.CRITTERTURRET.VALUE_NAME", "Critters in room");
+            Strings.Add("STRINGS.UI.UISIDESCREENS.CRITTERTURRET.VALUE_NAME", "Critters of one species in room");
 
             // Same category + subcategory + menu position as the Robo-Miner (Auto-Miner):
             // category "Conveyance" (the Shipping tab), subcategory "automated", placed

@@ -3,3 +3,4 @@ dist/
 !*/lib/*.dll
 __pycache__/
 vanilla_kanim_cache/
+obj/

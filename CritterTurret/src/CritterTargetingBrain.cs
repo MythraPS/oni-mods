@@ -22,8 +22,12 @@ namespace CritterTurret
     {
         // Firing rectangle in local building space (rotates with the building).
         // y starts at 0 so it covers the turret's OWN level, like the Auto-Miner.
-        public const int RANGE_MIN_X = -6, RANGE_MAX_X = 6;
-        public const int RANGE_MIN_Y = 0, RANGE_MAX_Y = 8;
+        // 19 wide covers a full-width stable from anywhere along it, so the
+        // building no longer has to be centred to reach both ends of a ranch.
+        // These are shared by both buildings and by the RangeVisualizer, so the
+        // on-screen box and the actual targeting cannot drift apart.
+        public const int RANGE_MIN_X = -9, RANGE_MAX_X = 9;
+        public const int RANGE_MIN_Y = 0, RANGE_MAX_Y = 10;
 
         // Logic output: 1 once every checked species sits at or under the threshold
         // (nothing left to do), 0 while any species is still over it. Same port id on
@@ -72,6 +76,10 @@ namespace CritterTurret
         // Hook for registering any invented checklist category with the per-game
         // DiscoveredResources. Runs on every spawn, including after a load.
         protected virtual void RegisterChecklistCategories() { }
+        // Run at the top of every tick, before anything is counted, so a subclass
+        // that remembers critters between ticks can drop the ones that have since
+        // been destroyed instead of holding the references forever.
+        protected virtual void PruneRememberedCritters() { }
         // The invented catch-all checklist category, if this building has one, used
         // to match critters that carry neither BagableCreature nor SwimmingCreature.
         protected virtual Tag? ExtraCategory { get { return null; } }
@@ -197,6 +205,7 @@ namespace CritterTurret
             int turretCell = OriginCell();
             if (!Grid.IsValidCell(turretCell)) return;
 
+            PruneRememberedCritters();
             TallyRoomBySpecies(turretCell);
             // Reported whether or not the building is powered: it is a reading about
             // the room, not about the turret, and staying live while switched off is
@@ -234,6 +243,10 @@ namespace CritterTurret
             if (charge >= ChargeTime)
             {
                 Discharge(target);
+                // Done with this one. Without dropping the lock the turret can
+                // spend a whole second winding up on a critter it just shot,
+                // because the death state machine has not tagged it Dead yet.
+                lockedTarget = null;
                 charge = 0f;
                 burstRemaining = BURST_DURATION;
             }
@@ -327,6 +340,14 @@ namespace CritterTurret
             foreach (var kpid in list)
             {
                 if (kpid == null || !Matches(kpid) || !CountsTowardPopulation(kpid)) continue;
+                // A corpse is not a population. The room's creature list is
+                // maintained by each critter's own OvercrowdingMonitor, which only
+                // drops it in OnCleanUp -- i.e. when the GameObject is finally
+                // destroyed, not when its hit points reach zero. Counting the dead
+                // is what let this turret keep firing on a herd it had already
+                // culled. StillValidTarget has always refused to aim at them; the
+                // tally now agrees.
+                if (kpid.HasTag(GameTags.Dead)) continue;
                 Tag key = kpid.PrefabTag;
                 int n;
                 speciesCounts.TryGetValue(key, out n);

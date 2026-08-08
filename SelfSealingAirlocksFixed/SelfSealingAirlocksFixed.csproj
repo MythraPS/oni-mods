@@ -1,0 +1,103 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Windows/MSBuild build for this mod, alongside the existing build.sh (which
+    needs mcs and Linux-only Steam paths). Both produce the same artifact:
+    dist/SelfSealingAirlocksFixed.dll next to mod.yaml/mod_info.yaml.
+
+      dotnet build SelfSealingAirlocksFixed.csproj
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>SelfSealingAirlocksFixed</AssemblyName>
+    <RootNamespace>SelfSealingAirlocks</RootNamespace>
+    <!--
+      net48: the game ships 0Harmony.dll built against .NET Framework 4.8.
+      Targeting lower makes MSBuild refuse to resolve it (MSB3274) and, through
+      the indirect dependency, Assembly-CSharp too (MSB3275); the build then
+      fails with every game type "not found".
+    -->
+    <TargetFramework>net48</TargetFramework>
+    <!-- Matches the -langversion:7.2 that build.sh passes to mcs, so the two
+         compilers accept exactly the same source. -->
+    <LangVersion>7.2</LangVersion>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <!--
+      Output straight into dist/, matching build.sh. The repo's .gitignore
+      already covers dist/, obj/ and *.dll, so this build adds nothing that
+      needs new ignore rules (a default bin/ would not be ignored).
+    -->
+    <BaseOutputPath>dist\</BaseOutputPath>
+    <OutputPath>dist\</OutputPath>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!--
+      Where the game's managed assemblies live. Set ONI_INSTALL_DIR to your game
+      root, or override the Managed folder directly:
+        dotnet build -p:GameLibsDir="D:\...\OxygenNotIncluded_Data\Managed"
+    -->
+    <GameLibsDir Condition="'$(GameLibsDir)' == '' AND '$(ONI_INSTALL_DIR)' != ''">$(ONI_INSTALL_DIR)\OxygenNotIncluded_Data\Managed</GameLibsDir>
+    <GameLibsDir Condition="'$(GameLibsDir)' == '' AND '$(OS)' == 'Windows_NT'">C:\Program Files (x86)\Steam\steamapps\common\OxygenNotIncluded\OxygenNotIncluded_Data\Managed</GameLibsDir>
+    <GameLibsDir Condition="'$(GameLibsDir)' == '' AND '$(OS)' != 'Windows_NT'">$(HOME)/.local/share/Steam/steamapps/common/OxygenNotIncluded/OxygenNotIncluded_Data/Managed</GameLibsDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Supplies the net48 targeting pack, so the build does not depend on which
+         .NET Framework dev packs happen to be installed. -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!--
+    The same six assemblies build.sh passes to mcs. Private=false keeps Klei's
+    DLLs out of the output: they are referenced for compilation only and are
+    never redistributed.
+  -->
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(GameLibsDir)\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp-firstpass">
+      <HintPath>$(GameLibsDir)\Assembly-CSharp-firstpass.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(GameLibsDir)\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(GameLibsDir)\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(GameLibsDir)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="netstandard">
+      <HintPath>$(GameLibsDir)\netstandard.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Fail early and legibly; a bad path otherwise yields hundreds of
+       "type or namespace not found" errors that hide the real cause. -->
+  <Target Name="ValidateGameLibsDir" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(GameLibsDir)\Assembly-CSharp.dll')"
+           Text="Assembly-CSharp.dll not found under GameLibsDir='$(GameLibsDir)'. Set ONI_INSTALL_DIR to your Oxygen Not Included install, or pass -p:GameLibsDir=...\OxygenNotIncluded_Data\Managed" />
+  </Target>
+
+  <!-- Packaging step from build.sh: the mod folder is the DLL plus its yamls
+       (and the preview image, when present). -->
+  <Target Name="PackageMod" AfterTargets="Build">
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\mod.yaml;$(MSBuildProjectDirectory)\mod_info.yaml"
+          DestinationFolder="$(MSBuildProjectDirectory)\dist" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\preview.png"
+          DestinationFolder="$(MSBuildProjectDirectory)\dist"
+          Condition="Exists('$(MSBuildProjectDirectory)\preview.png')" />
+    <Message Importance="high" Text="SelfSealingAirlocksFixed packaged at $(MSBuildProjectDirectory)\dist" />
+  </Target>
+
+</Project>

@@ -1,41 +1,120 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!--
+    Windows/MSBuild build for MagpieExtension, the peer of build.sh.
+
+    This file previously targeted net472 at LangVersion 9.0 and referenced
+    PLib.dll plus RonivansLegacy_ChemicalProcessing.dll through $(ONI_PATH),
+    $(MOD_MAGPIE_PATH) and $(MOD_RONIVANS_PATH). That did not match build.sh,
+    which is what actually ships releases: no source file references PLib, and
+    Ronivans types are reached by reflection with no compile-time link. It is
+    rewritten here to mirror build.sh exactly.
+  -->
+
   <PropertyGroup>
-    <TargetFramework>net472</TargetFramework>
     <AssemblyName>MagpieExtension</AssemblyName>
     <RootNamespace>MagpieExtension</RootNamespace>
-    <LangVersion>9.0</LangVersion>
+    <!--
+      net48: the game ships 0Harmony.dll built against .NET Framework 4.8.
+      Targeting lower makes MSBuild refuse to resolve it (MSB3274) and, through
+      the indirect dependency, Assembly-CSharp too (MSB3275); the build then
+      fails with every game type "not found".
+    -->
+    <TargetFramework>net48</TargetFramework>
+    <!-- Matches build.sh's -langversion:7.2 so mcs and Roslyn accept the same source. -->
+    <LangVersion>7.2</LangVersion>
+    <Optimize>true</Optimize>
     <Nullable>disable</Nullable>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
-    <Optimize>true</Optimize>
-    <!-- Suppress missing XML doc warnings -->
     <NoWarn>CS1591</NoWarn>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <!-- The mod root is one level up; build.sh puts everything in <mod>/dist. -->
+    <ModRoot>$(MSBuildProjectDirectory)\..</ModRoot>
+    <BaseOutputPath>$(ModRoot)\dist\</BaseOutputPath>
+    <OutputPath>$(ModRoot)\dist\</OutputPath>
   </PropertyGroup>
 
-  <!-- ONI game DLL references -->
+  <PropertyGroup>
+    <!--
+      Where the game's managed assemblies live. Set ONI_INSTALL_DIR to your game
+      root, or override the Managed folder directly:
+        dotnet build -p:GameLibsDir="D:\...\OxygenNotIncluded_Data\Managed"
+    -->
+    <GameLibsDir Condition="'$(GameLibsDir)' == '' AND '$(ONI_INSTALL_DIR)' != ''">$(ONI_INSTALL_DIR)\OxygenNotIncluded_Data\Managed</GameLibsDir>
+    <GameLibsDir Condition="'$(GameLibsDir)' == '' AND '$(OS)' == 'Windows_NT'">C:\Program Files (x86)\Steam\steamapps\common\OxygenNotIncluded\OxygenNotIncluded_Data\Managed</GameLibsDir>
+    <GameLibsDir Condition="'$(GameLibsDir)' == '' AND '$(OS)' != 'Windows_NT'">$(HOME)/.steam/steam/steamapps/common/OxygenNotIncluded/OxygenNotIncluded_Data/Managed</GameLibsDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!--
+    The same nine assemblies build.sh passes to mcs. Private=false keeps Klei's
+    DLLs out of the output; they are referenced for compilation only and are
+    never redistributed.
+  -->
   <ItemGroup>
     <Reference Include="Assembly-CSharp">
-      <HintPath>$(ONI_PATH)/OxygenNotIncluded_Data/Managed/Assembly-CSharp.dll</HintPath>
+      <HintPath>$(GameLibsDir)\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp-firstpass">
+      <HintPath>$(GameLibsDir)\Assembly-CSharp-firstpass.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(GameLibsDir)\UnityEngine.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
-      <HintPath>$(ONI_PATH)/OxygenNotIncluded_Data/Managed/UnityEngine.CoreModule.dll</HintPath>
+      <HintPath>$(GameLibsDir)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>$(GameLibsDir)\UnityEngine.InputLegacyModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>$(GameLibsDir)\UnityEngine.UI.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="0Harmony">
-      <HintPath>$(ONI_PATH)/OxygenNotIncluded_Data/Managed/0Harmony.dll</HintPath>
+      <HintPath>$(GameLibsDir)\0Harmony.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="PLib">
-      <HintPath>$(MOD_MAGPIE_PATH)/PLib.dll</HintPath>
+    <Reference Include="netstandard">
+      <HintPath>$(GameLibsDir)\netstandard.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <!-- Ronivans Legacy - Industrial Revolution (for HP conduit types) -->
-    <Reference Include="RonivansLegacy_ChemicalProcessing">
-      <HintPath>$(MOD_RONIVANS_PATH)/RonivansLegacy_ChemicalProcessing.dll</HintPath>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>$(GameLibsDir)\Newtonsoft.Json.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
+
+  <Target Name="ValidateGameLibsDir" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(GameLibsDir)\Assembly-CSharp.dll')"
+           Text="Assembly-CSharp.dll not found under GameLibsDir='$(GameLibsDir)'. Set ONI_INSTALL_DIR to your Oxygen Not Included install, or pass -p:GameLibsDir=...\OxygenNotIncluded_Data\Managed" />
+  </Target>
+
+  <!--
+    Packaging step from build.sh: yamls plus the anim/ tree beside the DLL.
+    The kanim assets are committed, so the Python generators in tools/ are not
+    run here; they only need re-running when the art itself changes.
+  -->
+  <Target Name="PackageMod" AfterTargets="Build">
+    <ItemGroup>
+      <AnimAsset Include="$(ModRoot)\anim\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="$(ModRoot)\mod.yaml;$(ModRoot)\mod_info.yaml"
+          DestinationFolder="$(ModRoot)\dist" />
+    <Copy SourceFiles="@(AnimAsset)"
+          DestinationFiles="@(AnimAsset->'$(ModRoot)\dist\anim\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Message Importance="high" Text="MagpieExtension packaged at $(ModRoot)\dist" />
+  </Target>
 
 </Project>

@@ -1,0 +1,98 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Windows/MSBuild build for MagpieExtensionRonivans, the peer of build.sh.
+
+    Ronivans Legacy is a runtime dependency only: its types are reached by
+    reflection, so there is deliberately no compile-time reference to
+    RonivansLegacy_ChemicalProcessing.dll here, matching build.sh.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>MagpieExtensionRonivans</AssemblyName>
+    <RootNamespace>MagpieExtensionRonivans</RootNamespace>
+    <!--
+      net48: the game ships 0Harmony.dll built against .NET Framework 4.8.
+      Targeting lower makes MSBuild refuse to resolve it (MSB3274) and, through
+      the indirect dependency, Assembly-CSharp too (MSB3275); the build then
+      fails with every game type "not found".
+    -->
+    <TargetFramework>net48</TargetFramework>
+    <!-- Matches build.sh's -langversion:7.2 so mcs and Roslyn accept the same source. -->
+    <LangVersion>7.2</LangVersion>
+    <Optimize>true</Optimize>
+    <Nullable>disable</Nullable>
+    <NoWarn>CS1591</NoWarn>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <ModRoot>$(MSBuildProjectDirectory)\..</ModRoot>
+    <BaseOutputPath>$(ModRoot)\dist\</BaseOutputPath>
+    <OutputPath>$(ModRoot)\dist\</OutputPath>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <GameLibsDir Condition="'$(GameLibsDir)' == '' AND '$(ONI_INSTALL_DIR)' != ''">$(ONI_INSTALL_DIR)\OxygenNotIncluded_Data\Managed</GameLibsDir>
+    <GameLibsDir Condition="'$(GameLibsDir)' == '' AND '$(OS)' == 'Windows_NT'">C:\Program Files (x86)\Steam\steamapps\common\OxygenNotIncluded\OxygenNotIncluded_Data\Managed</GameLibsDir>
+    <GameLibsDir Condition="'$(GameLibsDir)' == '' AND '$(OS)' != 'Windows_NT'">$(HOME)/.steam/steam/steamapps/common/OxygenNotIncluded/OxygenNotIncluded_Data/Managed</GameLibsDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- The same seven assemblies build.sh passes to mcs. -->
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(GameLibsDir)\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp-firstpass">
+      <HintPath>$(GameLibsDir)\Assembly-CSharp-firstpass.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(GameLibsDir)\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(GameLibsDir)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>$(GameLibsDir)\UnityEngine.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(GameLibsDir)\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="netstandard">
+      <HintPath>$(GameLibsDir)\netstandard.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="ValidateGameLibsDir" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(GameLibsDir)\Assembly-CSharp.dll')"
+           Text="Assembly-CSharp.dll not found under GameLibsDir='$(GameLibsDir)'. Set ONI_INSTALL_DIR to your Oxygen Not Included install, or pass -p:GameLibsDir=...\OxygenNotIncluded_Data\Managed" />
+  </Target>
+
+  <!--
+    Packaging step from build.sh: yamls plus the anim/ tree beside the DLL.
+    These anims are required even when only the base bridges are used; ONI
+    crashes with "First anim file needs to be non-null" if they are missing.
+  -->
+  <Target Name="PackageMod" AfterTargets="Build">
+    <ItemGroup>
+      <AnimAsset Include="$(ModRoot)\anim\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="$(ModRoot)\mod.yaml;$(ModRoot)\mod_info.yaml"
+          DestinationFolder="$(ModRoot)\dist" />
+    <Copy SourceFiles="@(AnimAsset)"
+          DestinationFiles="@(AnimAsset->'$(ModRoot)\dist\anim\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Message Importance="high" Text="MagpieExtensionRonivans packaged at $(ModRoot)\dist" />
+  </Target>
+
+</Project>

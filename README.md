@@ -5,6 +5,29 @@ mods. Everything here is my own code, MIT-licensed (see [LICENSE](LICENSE)).
 
 ## Mods
 
+### Auto Refinement
+Steam Workshop: _pending first upload_
+
+Buildings that normally need a Duplicant standing at them run by themselves —
+Metal Refinery, Rock Crusher, Glass Forge, Supermaterial Refinery, presses,
+kilns, cooking stations, apothecaries, and buildings from other mods.
+
+- Uses the game's own `ComplexFabricator.duplicantOperated` switch, the one the
+  vanilla Kiln, Rubber Maker and Uranium Centrifuge already run on.
+- **Duplicants can still help**: the errand stays by default, so a building runs
+  at normal speed alone and half again as fast with someone on it, Machinery
+  skill included. Both rates configurable, or drop the errand entirely.
+- **The Desalinator empties itself** onto the floor for an Auto-Sweeper to
+  collect — it is not a fabricator, so it needed its own patch.
+- **PLib Mod Options** grouped into categories; per-building exceptions by ID in
+  `AutoRefinement.json`.
+- Patches prefabs, not instances, and `duplicantOperated` is unserialized —
+  nothing touches the save.
+
+The only mod here that bundles a third-party assembly (PLib, MIT). See
+[its README](AutoRefinement/README.md) for the internals, including two bugs
+worth not repeating.
+
 ### Critter Turret
 [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3756399185)
 
@@ -103,4 +126,7 @@ publish. Updates work the same way via its **Edit** button.
 - **Magpie Bridge (鹊桥)** (Steam Workshop `2861126557`) — the original mod that
   inspired this one and whose building IDs Longer Bridges reuses for seamless
   save migration. © its author, 2022.
+- **PLib** by Peter Han (<https://github.com/peterhaneve/ONIMods>), MIT licence —
+  bundled by Auto Refinement for its options screen. PLib is designed to be
+  shipped per-mod; the newest loaded copy wins.
 - Klei Entertainment — Oxygen Not Included.

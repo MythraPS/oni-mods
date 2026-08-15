@@ -36,9 +36,10 @@ namespace ProtectiveWear
                 "Coat");
 
             Add(EVASuitConfig.ID, "Soft Suit",
-                "A lightweight sealed suit. No checkpoint required. Protection from cold, heat, radiation and airborne germs; keeps its wearer dry (no Sopping Wet or Soggy Feet) and shrugs off eye irritation; a large breath reserve and fewer bathroom breaks -- but no air tank, so it only delays suffocation. Covers head to toe: the suit's own boots fill the shoes slot while it's worn.",
-                "Combine a Warm Sweater, Swimwear, Rubber Boots, an Oxygen Mask and fiber into a checkpoint-free Soft Suit: cold/heat/radiation/germ shielding, immunity to wet and eye-irritation effects, a big breath reserve, slower bladder fill, and built-in boots.",
-                "Suit");
+                "A lightweight sealed suit. No checkpoint required. Seals in thin or unbreathable air and switches the wearer onto suit air, so they don't stand around flagged with Low Oxygen; resists Frostbite (tolerates far colder before freezing) and shields from heat, radiation and airborne germs; keeps Polluted Oxygen out of the wearer's lungs, so no coughing fits and no Yucky Lungs; keeps its wearer dry (no Sopping Wet or Soggy Feet) and shrugs off eye irritation; fewer bathroom breaks too. Cold protection is resistance, not immunity -- a truly extreme freeze still gets through. Covers head to toe: the suit's own boots fill the shoes slot while it's worn.",
+                "Combine a Warm Sweater, Swimwear, Rubber Boots, an Oxygen Mask and fiber into a checkpoint-free Soft Suit: seals in thin air so wearers avoid Low Oxygen, Frostbite resistance, heat/radiation/germ shielding, no Yucky Lungs in Polluted Oxygen, immunity to wet and eye-irritation effects, slower bladder fill, and built-in boots.",
+                "Suit",
+                "A sealed, checkpoint-free suit. Seals in thin or unbreathable air so the wearer isn't flagged with Low Oxygen, and resists <style=\"heat\">Frostbite</style> -- tolerating much colder before freezing (resistance, not immunity) -- plus heat, radiation and germ shielding, no Yucky Lungs in Polluted Oxygen, stays dry, and shrugs off eye irritation.");
 
             Add(EVASuitBootsConfig.ID, "Soft Suit Boots",
                 "The Soft Suit's built-in footwear. Comes with the suit, goes with the suit.",
@@ -46,7 +47,7 @@ namespace ProtectiveWear
                 "Boots");
         }
 
-        private static void Add(string id, string name, string desc, string recipeDesc, string generic)
+        private static void Add(string id, string name, string desc, string recipeDesc, string generic, string effect = null)
         {
             string p = "STRINGS.EQUIPMENT.PREFABS." + id.ToUpperInvariant() + ".";
             Strings.Add(p + "NAME", name);
@@ -55,6 +56,11 @@ namespace ProtectiveWear
             // The user menu formats its buttons as "Unequip {GENERICNAME}" --
             // without this key the button renders a giant MISSING.STRINGS path.
             Strings.Add(p + "GENERICNAME", generic);
+            // EFFECT is the hover tooltip. Items delegated from a vanilla base (the
+            // Soft Suit is built on the Warm Vest) otherwise inherit the base item's
+            // effect line ("Protects from Cold by increasing insulation"), so any
+            // item that needs its own tooltip passes one here to override it.
+            if (effect != null) Strings.Add(p + "EFFECT", effect);
         }
     }
 

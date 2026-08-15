@@ -48,10 +48,23 @@ namespace ProtectiveWear
         private const float RAD_THRESHOLD = 30f;    // rads -- seal the helmet in radiation
         private const int MAX_STAGE = 5;
         // Below this fraction of the breath reserve the "suit air" fiction ends
-        // and vanilla holding-breath/suffocation behaviour takes back over, so
-        // dupes still panic and go find real oxygen before they drop. Kept
-        // generous so they turn back with plenty of margin for the walk out.
-        private const float LOW_AIR_FRACTION = 0.25f;
+        // and vanilla holding-breath/suffocation behaviour takes back over.
+        //
+        // This is the ONLY thing that ever sends a wearer back for air, and it has
+        // to be generous. While sealed we force SuffocationMonitor.CanBreath() true,
+        // and that same "can't breathe" state is what makes the game hand out the
+        // vanilla RecoverBreath chore (BreathMonitor.CreateRecoverBreathChore, via
+        // Urges.RecoverBreath) -- so a sealed wearer is structurally incapable of
+        // deciding to leave. Nothing interrupts them until the fiction ends here.
+        //
+        // Everything left below this point is escape budget, and it is spent at
+        // DOUBLE rate (the suitAirDrain modifier is -2 * BREATH_RATE), on a swim,
+        // from wherever the errand took them. At 0.25 a dupe working the bottom of
+        // a pool ran out mid-return and had to be moved by hand. Half the tank for
+        // work and half to get home is the honest split.
+        private const float LOW_AIR_FRACTION = 0.5f;
+        // Exposed so the IsLowBreath patch retreats on the same fraction.
+        public static float LowAirFraction { get { return LOW_AIR_FRACTION; } }
         // Refilling breath happens in two tiers: up to a normal dupe's lungful
         // it catches up at the full vanilla breathing rate, so the wearer is
         // mission-ready fast; above that (the suit's BREATH_BONUS reserve) it
@@ -450,6 +463,39 @@ namespace ProtectiveWear
         }
     }
 
+    // Make the wearer actually turn back.
+    //
+    // BreathMonitor.IsLowBreath is what raises Urges.RecoverBreath and gets the
+    // dupe a RecoverBreathChore -- i.e. it is the entire "save yourself" reflex.
+    // It compares the ABSOLUTE breath value against TUNING.DUPLICANTSTATS.STANDARD
+    // .Breath.RETREAT_AMOUNT, a constant sized for the vanilla 100-unit /
+    // 110-second lung. The Soft Suit raises BreathMax by BREATH_BONUS (100 -> 300)
+    // and cannot raise that constant with it, so a wearer only reacts after burning
+    // through the whole bonus -- proportionally a third as much warning as a normal
+    // dupe gets, spent at double rate while sealed. In practice they keep working
+    // until they are nearly dead and have to be moved by hand.
+    //
+    // Ending the suit-air fiction at LOW_AIR_FRACTION does NOT fix this: that only
+    // stops the CanBreath override, it never triggers a retreat. So trip the same
+    // vanilla reflex ourselves, on the fraction the suit is actually scaled to.
+    [HarmonyPatch(typeof(BreathMonitor), "IsLowBreath")]
+    public static class BreathMonitor_IsLowBreath_SoftSuit
+    {
+        public static void Postfix(BreathMonitor.Instance smi, ref bool __result)
+        {
+            if (__result || smi == null) return;
+            GameObject dupe = smi.master?.gameObject;
+            if (dupe == null || !EVAHelmetManager.IsWearer(dupe)) return;
+
+            Klei.AI.AmountInstance breath = Db.Get().Amounts.Breath.Lookup(dupe);
+            if (breath == null) return;
+            float max = breath.GetMax();
+            if (max <= 0f) return;
+            if (breath.value / max < EVAHelmetManager.LowAirFraction)
+                __result = true;
+        }
+    }
+
     // Deterministic backstop for the suit's effect immunities: the def's
     // EffectImmunites list should already register these via Equippable
     // .OnEquip, but the first in-game test still saw Sopping Wet applied, so
@@ -460,6 +506,9 @@ namespace ProtectiveWear
         private static readonly HashSet<string> BLOCKED = new HashSet<string>
         {
             "SoakingWet", "WetFeet", "ColdAir", "WarmAir", "MinorIrritation", "MajorIrritation", "PoppedEarDrums", "Sunlight_Burning",
+            // "Yucky Lungs". Backstop only -- the real fix is the CoughMonitor
+            // patch below, which stops the cough that would apply it.
+            "ContaminatedLungs",
         };
 
         public static void Postfix(Klei.AI.Effects __instance, Klei.AI.Effect effect, ref bool __result)
@@ -467,6 +516,39 @@ namespace ProtectiveWear
             if (!__result && effect != null && BLOCKED.Contains(effect.Id) &&
                 EVAHelmetManager.IsWearer(__instance.gameObject))
                 __result = true;
+        }
+    }
+
+    // "Yucky Lungs" (effect id "ContaminatedLungs") at its source.
+    //
+    // The chain in the base game, read off the IL rather than guessed at:
+    //   OxygenBreather.BreathableGasConsumed(elementConsumed, mass, ...)
+    //     -> if elementConsumed == ContaminatedOxygen,
+    //        BoxingTrigger(GameHashes.BreatheDirtyAir, mass)
+    //   CoughMonitor.OnBreatheDirtyAir  accumulates amountConsumed; at >= 1.0 kg
+    //        it sets shouldCough, which runs the cough reactable
+    //   CoughMonitor.Instance.FinishedCoughing  -> Effects.Add("ContaminatedLungs")
+    //
+    // The Soft Suit never swapped the wearer's gas provider the way a vanilla
+    // Atmo Suit does -- "suit air" here is a SuffocationMonitor.CanBreath
+    // override, so OxygenBreather went on drawing gas out of the actual cell and
+    // Polluted Oxygen still reached BreathableGasConsumed. A sealed suit has no
+    // business inhaling the room, so drop the event for wearers: no
+    // accumulation, so no cough animation interrupting work, and FinishedCoughing
+    // -- the only thing in the game that applies the effect -- never runs.
+    //
+    // Gated on IsWearer rather than IsSuitAir on purpose. The helmet takes
+    // ARM_DELAY plus the stage ramp to seal, and a dupe breathes ~0.1 kg/s, so
+    // an IsSuitAir gate would leave exactly the window that produced the
+    // original bug report: walk into Polluted Oxygen, cough once before the
+    // helmet finishes assembling, get the effect anyway.
+    [HarmonyPatch(typeof(CoughMonitor), "OnBreatheDirtyAir")]
+    public static class CoughMonitor_OnBreatheDirtyAir_SoftSuit
+    {
+        public static bool Prefix(CoughMonitor.Instance smi)
+        {
+            GameObject dupe = smi != null && smi.master != null ? smi.master.gameObject : null;
+            return !EVAHelmetManager.IsWearer(dupe);   // false = skip the original
         }
     }
 }

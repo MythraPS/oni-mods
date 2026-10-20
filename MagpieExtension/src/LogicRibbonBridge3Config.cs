@@ -15,7 +15,7 @@ namespace MagpieExtension
             BuildingDef baseDef = BaseConfig.CreateBuildingDef();
             BuildingDef def = BuildingTemplates.CreateBuildingDef(
                 ID, 5, 1, "logic_ribbon_bridge5_kanim", 30, 30f,
-                BridgeHelpers.LogicMass, BridgeHelpers.LogicMaterials, 1600f,
+                baseDef.Mass, baseDef.MaterialCategory, 1600f,
                 BuildLocationRule.LogicBridge, BUILDINGS.DECOR.PENALTY.TIER0, NOISE_POLLUTION.NONE);
             def.ViewMode = baseDef.ViewMode;
             def.ObjectLayer = baseDef.ObjectLayer;

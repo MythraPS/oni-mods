@@ -36,7 +36,7 @@ Refinement extends that to everything else.
 
 **Fully standalone — no other mods required.**
 
-👉 **Steam Workshop:** [LINK AFTER UPLOADING]
+👉 **Steam Workshop:** https://steamcommunity.com/sharedfiles/filedetails/?id=3782032937
 👉 **Nexus Mods:** [LINK AFTER UPLOADING]
 👉 **Source:** https://github.com/SattaRIP/oni-mods
 

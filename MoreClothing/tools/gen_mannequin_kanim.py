@@ -24,7 +24,7 @@ on a wooden stand:
     the donor place frame maps a 288x480-unit box centered at
     (-6.5,-199.3) over the full footprint (floor at ~ y=+41).
 
-Output goes to anim/mannequin_anims/mannequin/, which build.sh copies into
+Output goes to anim/moreclothing_mannequin_anims/moreclothing_mannequin/, which build.sh copies into
 dist/. Re-run after game updates if Klei changes the donor art.
 """
 import sys
@@ -39,7 +39,7 @@ CACHE = REPO / "tools" / "vanilla_kanim_cache"
 ANIM = REPO / "anim"
 
 SRC = "pedestal"
-NEW = "mannequin"
+NEW = "moreclothing_mannequin"   # NOT "mannequin": the game has its own mannequin_kanim (outfit designer preview), and a mod anim with that name replaces it
 BODY = "body_comp_default"
 IDLE = "anim_idles_default"
 

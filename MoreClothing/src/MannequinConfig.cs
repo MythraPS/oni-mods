@@ -18,7 +18,7 @@ namespace ProtectiveWear
         public override BuildingDef CreateBuildingDef()
         {
             BuildingDef def = BuildingTemplates.CreateBuildingDef(
-                ID, 1, 2, "mannequin_kanim", 10, 30f,
+                ID, 1, 2, "moreclothing_mannequin_kanim", 10, 30f,
                 BUILDINGS.CONSTRUCTION_MASS_KG.TIER2, TUNING.MATERIALS.RAW_MINERALS, 800f,
                 BuildLocationRule.OnFloor, BUILDINGS.DECOR.BONUS.TIER1,
                 TUNING.NOISE_POLLUTION.NONE, 0.2f);

@@ -132,6 +132,15 @@ namespace SelfSealingAirlocks
                     HandleVector<Game.CallbackInfo>.Handle handle = Game.Instance.callbackManager.Add(new Game.CallbackInfo(cb_closed, false));
                     SimMessages.ReplaceAndDisplaceElement(cell, element.ElementID, CellEventLogger.Instance.DoorClose, mass_per_cell, element.Temperature, byte.MaxValue, 0, handle.index);
                 }
+
+                // Insulation, as the vanilla method sets it: a closed door's cells use the door's
+                // insulationModifier (what makes an Insulated Door insulate), an open door's are reset
+                // to 1. Skipping the original method skipped this too, so insulated doors conducted
+                // heat like plain tiles.
+                if (__instance.insulationModifier != 1f)
+                {
+                    SimMessages.SetInsulation(cell, is_door_open ? 1f : __instance.insulationModifier);
+                }
             }
 
             // Skip the original method

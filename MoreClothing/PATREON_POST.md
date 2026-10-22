@@ -33,8 +33,7 @@ Bionic Booster Pack garments as ingredients; Winter Coat and Shoes are
 DLC-free.
 
 👉 **Steam Workshop:** https://steamcommunity.com/sharedfiles/filedetails/?id=3765092134
-👉 **Nexus Mods:** [LINK AFTER UPLOADING]
-👉 **Source (MIT):** https://github.com/SattaRIP/oni-mods
+👉 **Source (MIT):** https://github.com/MythraPS/oni-mods
 
 Free for everyone — if you'd like to support more mods like this, a pledge
 keeps the lights on. 💛 Bug reports and ideas welcome in the comments.

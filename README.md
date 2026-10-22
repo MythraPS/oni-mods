@@ -47,7 +47,7 @@ hands-off critter population control. Standalone.
 Found in the **Shipping** menu next to the Robo-Miner. 120 W, refined metal.
 
 ### Gas-Tight Doors
-Steam Workshop: link to follow
+[Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3824303711)
 
 Doors stay gas- and liquid-tight while Duplicants walk through them.
 

@@ -12,7 +12,7 @@ namespace AutoRefinement
     // checkboxes, and ManualBuildings stays in the JSON for per-building exceptions.
     [JsonObject(MemberSerialization.OptIn)]
     [ConfigFile("AutoRefinement.json", true, false)]
-    [ModInfo("https://github.com/SattaRIP/oni-mods")]
+    [ModInfo("https://github.com/MythraPS/oni-mods")]
     [RestartRequired]
     public sealed class AutoRefinementOptions
     {

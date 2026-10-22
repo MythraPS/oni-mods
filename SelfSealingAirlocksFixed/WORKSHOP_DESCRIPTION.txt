@@ -10,7 +10,7 @@ Credits:
 - chromiumboy -- original mod and source code: https://github.com/chromiumboy/OxygenNotIncludedMods
 - the Self-sealing Airlocks Revived uploader -- kept the mod alive through the Harmony 2 transition
 
-I claim no ownership of the idea or the original code; if the original author asks, this upload comes down. Source for this build: https://github.com/SattaRIP/oni-mods
+I claim no ownership of the idea or the original code; if the original author asks, this upload comes down. Source for this build: https://github.com/MythraPS/oni-mods
 
 === CHANGE NOTE ===
 Initial upload: rebuild of Self-Sealing Airlocks for U59-740622. Fixes the MissingMethodException on SimMessages.SetCellProperties that crashes older builds on door spawn; ported to Harmony 2 / UserMod2. No behavior changes.

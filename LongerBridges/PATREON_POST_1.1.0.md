@@ -30,7 +30,7 @@ Details that matter:
   everything else works with zero dependencies
 
 👉 **Steam Workshop:** https://steamcommunity.com/sharedfiles/filedetails/?id=3751316059
-👉 **Source (MIT):** https://github.com/SattaRIP/oni-mods
+👉 **Source (MIT):** https://github.com/MythraPS/oni-mods
 
 Free as always — pledges fund the coffee that fuels the next building. 💛
 Ideas and bug reports welcome in the comments.

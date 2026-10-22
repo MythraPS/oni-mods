@@ -46,6 +46,21 @@ hands-off critter population control. Standalone.
 
 Found in the **Shipping** menu next to the Robo-Miner. 120 W, refined metal.
 
+### Gas-Tight Doors
+Steam Workshop: link to follow
+
+Doors stay gas- and liquid-tight while Duplicants walk through them.
+
+- **Seal:** Mechanized Airlock, Manual Airlock, Insulated Door, Bunker Door.
+- **Unchanged:** Pneumatic Door and Wicker Door (the game never lets these
+  seal), and any door set to **Open**, so a room can still be vented on purpose.
+- One Harmony prefix on `Door.SetSimState`: an opening door is handed to the
+  game as closed, so the game's own closed-door code keeps the cells solid and
+  handles insulation and temperature.
+
+Written from scratch; same idea as chromiumboy's classic Self-Sealing Airlocks,
+with none of its code.
+
 ### More Clothing
 [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3765092134)
 

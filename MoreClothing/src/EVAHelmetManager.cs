@@ -47,24 +47,26 @@ namespace ProtectiveWear
         private const float HOT_TEMP_K = 323.15f;  // 50 C -- seal the helmet in heat
         private const float RAD_THRESHOLD = 30f;    // rads -- seal the helmet in radiation
         private const int MAX_STAGE = 5;
-        // Below this fraction of the breath reserve the "suit air" fiction ends
-        // and vanilla holding-breath/suffocation behaviour takes back over.
+        // Below this much breath left the "suit air" fiction ends and vanilla
+        // holding-breath/suffocation behaviour takes back over.
         //
-        // This is the ONLY thing that ever sends a wearer back for air, and it has
-        // to be generous. While sealed we force SuffocationMonitor.CanBreath() true,
-        // and that same "can't breathe" state is what makes the game hand out the
-        // vanilla RecoverBreath chore (BreathMonitor.CreateRecoverBreathChore, via
-        // Urges.RecoverBreath) -- so a sealed wearer is structurally incapable of
-        // deciding to leave. Nothing interrupts them until the fiction ends here.
+        // This is vanilla's own RETREAT_AMOUNT -- the exact level at which a dupe
+        // with no suit on stops what they are doing and goes to breathe. So a
+        // wearer gets the suit's whole reserve as working air, and then the same
+        // last lungful, and the same warning, that everyone else gets.
         //
-        // Everything left below this point is escape budget, and it is spent at
-        // DOUBLE rate (the suitAirDrain modifier is -2 * BREATH_RATE), on a swim,
-        // from wherever the errand took them. At 0.25 a dupe working the bottom of
-        // a pool ran out mid-return and had to be moved by hand. Half the tank for
-        // work and half to get home is the honest split.
-        private const float LOW_AIR_FRACTION = 0.5f;
-        // Exposed so the IsLowBreath patch retreats on the same fraction.
-        public static float LowAirFraction { get { return LOW_AIR_FRACTION; } }
+        // The reserve is NOT spent at double rate, which is worth writing down
+        // because an earlier version of this comment said it was. While sealed we
+        // force SuffocationMonitor.CanBreath() true, so the monitor sits in its
+        // satisfied state and applies increaseBreathModifier (+BREATH_RATE); the
+        // suitAirDrain of -2 * BREATH_RATE cancels that and drains, for a net of
+        // -BREATH_RATE -- identical to vanilla holding-breath. Everything below
+        // this floor is therefore worth the same 80 seconds of walking home that
+        // it is worth for an unsuited dupe.
+        private static float SuitAirFloor()
+        {
+            return TUNING.DUPLICANTSTATS.STANDARD.Breath.RETREAT_AMOUNT;
+        }
         // Refilling breath happens in two tiers: up to a normal dupe's lungful
         // it catches up at the full vanilla breathing rate, so the wearer is
         // mission-ready fast; above that (the suit's BREATH_BONUS reserve) it
@@ -252,17 +254,29 @@ namespace ProtectiveWear
                 // the suit: no held breath, but the reserve drains at the
                 // vanilla holding-breath rate until it runs low.
                 Klei.AI.AmountInstance breathAmt = Db.Get().Amounts.Breath.Lookup(w);
-                float frac = breathAmt != null && breathAmt.GetMax() > 0f
-                    ? breathAmt.value / breathAmt.GetMax() : 0f;
-                SetSuitAir(w, stage == MAX_STAGE && !IsBreathable(w) && frac > LOW_AIR_FRACTION);
+                SetSuitAir(w, stage == MAX_STAGE && !IsBreathable(w)
+                    && breathAmt != null && breathAmt.value > SuitAirFloor());
+                bool recovering = w.HasTag(GameTags.RecoveringBreath);
 
                 // Two-tier refill: while in oxygen, catch up to a normal dupe's
                 // lungful at full speed, then slow the fill for the reserve above
                 // it. "Normal" = the current max minus the suit's bonus.
+                //
+                // Two things it must never do:
+                //  * slow the compulsory RecoverBreath pant -- that is the one
+                //    moment the wearer is standing still waiting on this number;
+                //  * push the wearer's NET breath delta below zero. The drain
+                //    lands on the same BreathDelta attribute everything else
+                //    subtracts from, and Slimelung subtracts 1.25 * BREATH_RATE
+                //    for the whole 2220s it lasts. 0.6 * BREATH_RATE on top of
+                //    that beats breathing's +BREATH_RATE, so the bar fell even in
+                //    pure oxygen: the wearer re-tripped the retreat every few
+                //    minutes and panted through their downtime and sleep.
                 float normalBreath = breathAmt != null
                     ? Mathf.Max(0f, breathAmt.GetMax() - EVASuitConfig.BREATH_BONUS) : 0f;
-                bool toppingReserve = breathAmt != null && IsBreathable(w)
-                    && breathAmt.value < breathAmt.GetMax() && breathAmt.value >= normalBreath;
+                bool toppingReserve = breathAmt != null && !recovering && IsBreathable(w)
+                    && breathAmt.value < breathAmt.GetMax() && breathAmt.value >= normalBreath
+                    && StillGainsWithReserveDrain(w, breathAmt);
                 SetSlowTopUp(w, toppingReserve);
             }
         }
@@ -324,6 +338,26 @@ namespace ProtectiveWear
                 attrs.Remove(reserveTopUpDrain);
             }
         }
+
+        private static float ReserveDrainValue()
+        {
+            return -(1f - RESERVE_REFILL_FRACTION)
+                * TUNING.DUPLICANTSTATS.STANDARD.Breath.BREATH_RATE;
+        }
+
+        // Would the reserve top-up drain still leave the wearer gaining breath?
+        // Measured against everything else currently on BreathDelta, with our
+        // own drain taken back out so the answer doesn't depend on whether it
+        // happens to be applied this tick (which is what would make it flap).
+        private static bool StillGainsWithReserveDrain(GameObject dupe, Klei.AI.AmountInstance breath)
+        {
+            if (breath == null || breath.deltaAttribute == null) return false;
+            float others = breath.deltaAttribute.GetTotalValue();
+            if (reserveTopUpDrain != null && slowTopUp.Contains(dupe))
+                others -= reserveTopUpDrain.Value;
+            return others + ReserveDrainValue() >= 0f;
+        }
+
 
         // A real suit (Atmo/Lead/Jet) is worn on top: drop OUR headgear so the
         // suit's own helmet shows, but keep the mask off. The Atmo Suit draws
@@ -463,23 +497,29 @@ namespace ProtectiveWear
         }
     }
 
-    // Make the wearer actually turn back.
+    // End the pant early: stop at a normal dupe's full lungful, not at the top
+    // of the suit's tank.
     //
-    // BreathMonitor.IsLowBreath is what raises Urges.RecoverBreath and gets the
-    // dupe a RecoverBreathChore -- i.e. it is the entire "save yourself" reflex.
-    // It compares the ABSOLUTE breath value against TUNING.DUPLICANTSTATS.STANDARD
-    // .Breath.RETREAT_AMOUNT, a constant sized for the vanilla 100-unit /
-    // 110-second lung. The Soft Suit raises BreathMax by BREATH_BONUS (100 -> 300)
-    // and cannot raise that constant with it, so a wearer only reacts after burning
-    // through the whole bonus -- proportionally a third as much warning as a normal
-    // dupe gets, spent at double rate while sealed. In practice they keep working
-    // until they are nearly dead and have to be moved by hand.
+    // The retreat itself is left entirely alone -- BreathMonitor.IsLowBreath
+    // compares the ABSOLUTE breath value against RETREAT_AMOUNT (72.7 of a
+    // vanilla 100-unit lung), and a wearer should hit that at exactly the same
+    // point everyone else does. The suit buys a bigger tank in front of that
+    // line, not a different line.
     //
-    // Ending the suit-air fiction at LOW_AIR_FRACTION does NOT fix this: that only
-    // stops the CanBreath override, it never triggers a retreat. So trip the same
-    // vanilla reflex ourselves, on the fraction the suit is actually scaled to.
-    [HarmonyPatch(typeof(BreathMonitor), "IsLowBreath")]
-    public static class BreathMonitor_IsLowBreath_SoftSuit
+    // What does need changing is the way OUT. The low-breath urge only clears on
+    // IsFullBreath -- breath.value >= breath.GetMax() -- and RecoverBreathChore
+    // is PriorityClass.compulsory, so it overrides the schedule, sleep included,
+    // until the bar is FULL. A vanilla dupe breathes back the 27.3 units between
+    // RETREAT_AMOUNT and 100. A Soft Suit wearer would breathe back 227 to fill
+    // 300, and 327 with the Swimming skill's +100 lung, at the same +3/s. Same
+    // errand, eight times the standing still.
+    //
+    // So a wearer is "full" once they hold what they would hold as a full lung
+    // with the suit off: GetMax() minus the suit's own bonus. That is 27.3 units
+    // of panting, the same as anyone else's, and the reserve on top of it fills
+    // back in passively while they get on with their day.
+    [HarmonyPatch(typeof(BreathMonitor), "IsFullBreath")]
+    public static class BreathMonitor_IsFullBreath_SoftSuit
     {
         public static void Postfix(BreathMonitor.Instance smi, ref bool __result)
         {
@@ -489,10 +529,43 @@ namespace ProtectiveWear
 
             Klei.AI.AmountInstance breath = Db.Get().Amounts.Breath.Lookup(dupe);
             if (breath == null) return;
+            // Never below a vanilla lungful, so this can't land under
+            // RETREAT_AMOUNT and bounce the wearer straight back into the urge.
             float max = breath.GetMax();
-            if (max <= 0f) return;
-            if (breath.value / max < EVAHelmetManager.LowAirFraction)
+            float done = Mathf.Min(max, Mathf.Max(
+                max - EVASuitConfig.BREATH_BONUS,
+                TUNING.DUPLICANTSTATS.STANDARD.Breath.BREATH_BAR_TOTAL_AMOUNT));
+            if (breath.value >= done)
                 __result = true;
+        }
+    }
+
+    // Sealed against airborne germs, for real this time.
+    //
+    // GameTags.HasAirtightSuit does NOT do this. Measured: the only things that
+    // read it are MosquitoConfig (bite immunity) and BionicWaterDamageMonitor.
+    // Inhaled disease travels a different road entirely --
+    //   OxygenBreather.BreathableGasConsumed -> onBreathableGasConsumed
+    //     -> GermExposureMonitor.Instance.OnAirConsumed
+    //       -> InjectDisease(disease, count, source, InfectionVector 2)
+    // -- and vanilla suits dodge it not by a tag but by drawing their air from a
+    // tank instead of the tile. The Soft Suit's "suit air" is a CanBreath
+    // override, not a tank, so the wearer went on inhaling whatever they were
+    // standing in, germs included. Slimelung lists that same vector 2, which is
+    // how a fully suited dupe was catching it.
+    //
+    // So cut the intake at the source. Wearing the suit is the whole condition:
+    // it is sealed, and a seal does not have a breath meter. This deliberately
+    // does not care about the helmet stage or how much reserve is left -- the
+    // helmet only assembles in air that isn't breathable, and germ-laden oxygen
+    // IS breathable, which is exactly the case a wearer needs covering.
+    [HarmonyPatch(typeof(GermExposureMonitor.Instance), "OnAirConsumed")]
+    public static class GermExposureMonitor_OnAirConsumed_SoftSuit
+    {
+        public static bool Prefix(GermExposureMonitor.Instance __instance)
+        {
+            return __instance == null
+                || !EVAHelmetManager.IsWearer(__instance.master?.gameObject);
         }
     }
 

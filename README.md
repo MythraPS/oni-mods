@@ -6,7 +6,7 @@ mods. Everything here is my own code, MIT-licensed (see [LICENSE](LICENSE)).
 ## Mods
 
 ### Auto Refinement
-Steam Workshop: _pending first upload_
+[Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3782032937)
 
 Buildings that normally need a Duplicant standing at them run by themselves —
 Metal Refinery, Rock Crusher, Glass Forge, Supermaterial Refinery, presses,
